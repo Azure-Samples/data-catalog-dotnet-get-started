@@ -1,7 +1,7 @@
 ---
 services: data-catalog
 platforms: dotnet
-author: derrickv
+author: dvana
 ---
 #Get started with Azure Data Catalog
 
