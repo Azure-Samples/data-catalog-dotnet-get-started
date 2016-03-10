@@ -1,6 +1,9 @@
 ﻿//Microsoft Data Catalog team sample
 
 using System;
+using System.Text;
+
+//Install-Package Microsoft.IdentityModel
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using System.Net;
 using System.IO;
@@ -9,10 +12,11 @@ namespace ConsoleApplication
 {
     class Program
     {
+        //TODO: Replace {ClientID}
         static string clientIDFromAzureAppRegistration = "{ClientID}";
         static AuthenticationResult authResult = null;
 
-	//Note: This example uses the "DefaultCatalog" keyword to update the user's default catalog.  You may alternately
+        //Note: This example uses the "DefaultCatalog" keyword to update the user's default catalog.  You may alternately
         //specify the actual catalog name.
         static string catalogName = "DefaultCatalog";
 
@@ -90,61 +94,41 @@ namespace ConsoleApplication
         {
             string dataAssetHeader = string.Empty;
 
-            //Get access token to use to call operation
-            AuthenticationResult authResult = AccessToken();
-
-            string fullUri = string.Format("https://{0}.datacatalog.azure.com/{1}/views/tables?api-version=2015-07.1.0-Preview",
-                authResult.TenantId, catalogName);
+            string fullUri = string.Format("https://api.azuredatacatalog.com/catalogs/{0}/views/tables?api-version=2015-07.1.0-Preview", catalogName);
 
             //Create a POST WebRequest as a Json content type
             HttpWebRequest request = System.Net.WebRequest.Create(fullUri) as System.Net.HttpWebRequest;
             request.KeepAlive = true;
             request.Method = "POST";
-            request.ContentLength = 0;
-            request.ContentType = "application/json";
 
-            //To authorize the operation call, you need an access token which is part of the Authorization header
-            request.Headers.Add("Authorization", authResult.CreateAuthorizationHeader());
-
-            //POST web request
-            byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(json);
-            request.ContentLength = byteArray.Length;
-
-            //Write JSON byte[] into a Stream and get web response
-            using (Stream writer = request.GetRequestStream())
+            try
             {
-                writer.Write(byteArray, 0, byteArray.Length);
+                var response = SetRequestAndGetResponse(request, json);
 
-                try
+                //Get the Response header which contains the data asset ID
+                //The format is: tables/{data asset ID} 
+                dataAssetHeader = response.Headers["Location"];
+            }
+            catch(WebException ex)
+            {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.Status);
+                if (ex.Response != null)
                 {
-                    var response = (HttpWebResponse)request.GetResponse();
-
-                    //Get the Response header which contains the data asset ID
-                    //The format is: tables/{data asset ID} 
-                    dataAssetHeader = response.Headers["Location"];
-                }
-                catch(WebException ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.Status);
-                    if (ex.Response != null)
+                    // can use ex.Response.Status, .StatusDescription
+                    if (ex.Response.ContentLength != 0)
                     {
-                        // can use ex.Response.Status, .StatusDescription
-                        if (ex.Response.ContentLength != 0)
+                        using (var stream = ex.Response.GetResponseStream())
                         {
-                            using (var stream = ex.Response.GetResponseStream())
+                            using (var reader = new StreamReader(stream))
                             {
-                                using (var reader = new StreamReader(stream))
-                                {
-                                    Console.WriteLine(reader.ReadToEnd());
-                                }
+                                Console.WriteLine(reader.ReadToEnd());
                             }
                         }
                     }
-                    return null;
                 }
+                return null;
             }
-
             return dataAssetHeader;
         }
 
@@ -154,25 +138,18 @@ namespace ConsoleApplication
         {
             string responseContent = string.Empty;
 
-            //Get access token to use to call operation
-            AuthenticationResult authResult = AccessToken();
-
             //NOTE: To find the Catalog Name, sign into Azure Data Catalog, and choose User. You will see a list of Catalog names.          
             string fullUri =
-                string.Format("https://{0}.search.datacatalog.azure.com/{1}/search/search?searchTerms={2}&count=10&api-version=2015-06.0.1-Preview",
-                authResult.TenantId, catalogName, searchTerm);
+                string.Format("https://api.azuredatacatalog.com/catalogs/{0}/search/search?searchTerms={1}&count=10&api-version=2015-06.0.1-Preview", catalogName, searchTerm);
 
             //Create a GET WebRequest
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(fullUri);
             request.Method = "GET";
 
-            //To authorize the operation call, you need an access token which is part of the Authorization header
-            request.Headers.Add("Authorization", authResult.CreateAuthorizationHeader());
-
             try
             {
                 //Get HttpWebResponse from GET request
-                using (HttpWebResponse httpResponse = request.GetResponse() as System.Net.HttpWebResponse)
+                using (HttpWebResponse httpResponse = SetRequestAndGetResponse(request))
                 {
                     //Get StreamReader that holds the response stream
                     using (StreamReader reader = new System.IO.StreamReader(httpResponse.GetResponseStream()))
@@ -211,28 +188,20 @@ namespace ConsoleApplication
         {
             string responseStatusCode = string.Empty;
 
-            //Get access token to use to call operation
-            AuthenticationResult authResult = AccessToken();
-
             //NOTE: To find the Catalog Name, sign into Azure Data Catalog, and choose User. You will see a list of Catalog names.          
             string fullUri =
-                string.Format("https://{0}.datacatalog.azure.com/{1}/views/{2}?api-version=2015-07.1.0-Preview",
-                authResult.TenantId, catalogName, dataAssetID);
+                string.Format("https://api.azuredatacatalog.com/catalogs/{0}/views/{1}?api-version=2015-07.1.0-Preview", catalogName, dataAssetID);
 
             //Create a DELETE WebRequest as a Json content type
             HttpWebRequest request = System.Net.WebRequest.Create(fullUri) as System.Net.HttpWebRequest;
             request.KeepAlive = true;
             request.Method = "DELETE";
-            request.ContentLength = 0;
-            request.ContentType = "application/json";
 
-            //To authorize the operation call, you need an access token which is part of the Authorization header
-            request.Headers.Add("Authorization", authResult.CreateAuthorizationHeader());
 
             try
             {
                 //Get HttpWebResponse from GET request
-                using (HttpWebResponse response = request.GetResponse() as System.Net.HttpWebResponse)
+                using (HttpWebResponse response = SetRequestAndGetResponse(request))
                 {
                     responseStatusCode = response.StatusCode.ToString();
                 }
@@ -259,6 +228,47 @@ namespace ConsoleApplication
             }
 
             return responseStatusCode;
+        }
+
+        static HttpWebResponse SetRequestAndGetResponse(HttpWebRequest request, string payload = null)
+        {
+            while (true)
+            {
+                //To authorize the operation call, you need an access token which is part of the Authorization header
+                request.Headers.Add("Authorization", AccessToken().CreateAuthorizationHeader());
+                //Set to false to be able to intercept redirects
+                request.AllowAutoRedirect = false;
+
+                if (!string.IsNullOrEmpty(payload))
+                {
+                    byte[] byteArray = Encoding.UTF8.GetBytes(payload);
+                    request.ContentLength = byteArray.Length;
+                    request.ContentType = "application/json";
+                    //Write JSON byte[] into a Stream
+                    request.GetRequestStream().Write(byteArray, 0, byteArray.Length);
+                }
+                else
+                {
+                    request.ContentLength = 0;
+                }
+
+                HttpWebResponse response = request.GetResponse() as HttpWebResponse;
+
+                // Requests to **Azure Data Catalog (ADC)** may return an HTTP 302 response to indicate
+                // redirection to a different endpoint. In response to a 302, the caller must re-issue
+                // the request to the URL specified by the Location response header. 
+                if (response.StatusCode == HttpStatusCode.Redirect)
+                {
+                    string redirectedUrl = response.Headers["Location"];
+                    HttpWebRequest nextRequest = WebRequest.Create(redirectedUrl) as HttpWebRequest;
+                    nextRequest.Method = request.Method;
+                    request = nextRequest;
+                }
+                else
+                {
+                    return response;
+                }
+            }
         }
 
         static string SampleJson(string name)
@@ -320,5 +330,4 @@ namespace ConsoleApplication
             "}";
         }
     }
-    
 }
