@@ -2,8 +2,6 @@
 
 using System;
 using System.Text;
-
-//Install-Package Microsoft.IdentityModel
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using System.Net;
 using System.IO;
@@ -12,7 +10,6 @@ namespace ConsoleApplication
 {
     class Program
     {
-        //TODO: Replace {ClientID}
         static string clientIDFromAzureAppRegistration = "{ClientID}";
         static AuthenticationResult authResult = null;
 
@@ -45,12 +42,12 @@ namespace ConsoleApplication
             Console.WriteLine("Register sample data asset to Delete. Press Enter to continue");
 
             //Register a sample data asset to delete
-            string dataAssetID = RegisterDataAsset(catalogName, SampleJson("DeleteSample"));
+            string dataAssetUrl = RegisterDataAsset(catalogName, SampleJson("DeleteSample"));
             Console.ReadLine();
 
             Console.WriteLine("Delete data asset. Press Enter to continue");
-            
-            DeleteDataAsset(catalogName, dataAssetID);
+
+            DeleteDataAsset(dataAssetUrl);
 
             Console.ReadLine();
         }
@@ -65,7 +62,7 @@ namespace ConsoleApplication
             if (authResult == null)
             {
                 //Resource Uri for Data Catalog API
-                string resourceUri = "https://datacatalog.azure.com";
+                string resourceUri = "https://api.azuredatacatalog.com";
 
                 //To learn how to register a client app and get a Client ID, see https://msdn.microsoft.com/en-us/library/azure/mt403303.aspx#clientID   
                 string clientId = clientIDFromAzureAppRegistration;
@@ -94,7 +91,7 @@ namespace ConsoleApplication
         {
             string dataAssetHeader = string.Empty;
 
-            string fullUri = string.Format("https://api.azuredatacatalog.com/catalogs/{0}/views/tables?api-version=2015-07.1.0-Preview", catalogName);
+            string fullUri = string.Format("https://api.azuredatacatalog.com/catalogs/{0}/views/tables?api-version=2016-03-30", catalogName);
 
             //Create a POST WebRequest as a Json content type
             HttpWebRequest request = System.Net.WebRequest.Create(fullUri) as System.Net.HttpWebRequest;
@@ -140,7 +137,7 @@ namespace ConsoleApplication
 
             //NOTE: To find the Catalog Name, sign into Azure Data Catalog, and choose User. You will see a list of Catalog names.          
             string fullUri =
-                string.Format("https://api.azuredatacatalog.com/catalogs/{0}/search/search?searchTerms={1}&count=10&api-version=2015-06.0.1-Preview", catalogName, searchTerm);
+                string.Format("https://api.azuredatacatalog.com/catalogs/{0}/search/search?searchTerms={1}&count=10&api-version=2016-03-30", catalogName, searchTerm);
 
             //Create a GET WebRequest
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(fullUri);
@@ -184,13 +181,12 @@ namespace ConsoleApplication
 
         //Delete data asset:
         // The Delete Data Asset operation deletes a data asset and all annotations (if any) attached to it. 
-        static string DeleteDataAsset(string catalogName, string dataAssetID)
+        static string DeleteDataAsset(string dataAssetUrl)
         {
             string responseStatusCode = string.Empty;
 
             //NOTE: To find the Catalog Name, sign into Azure Data Catalog, and choose User. You will see a list of Catalog names.          
-            string fullUri =
-                string.Format("https://api.azuredatacatalog.com/catalogs/{0}/views/{1}?api-version=2015-07.1.0-Preview", catalogName, dataAssetID);
+            string fullUri = string.Format("{0}?api-version=2016-03-30", dataAssetUrl);
 
             //Create a DELETE WebRequest as a Json content type
             HttpWebRequest request = System.Net.WebRequest.Create(fullUri) as System.Net.HttpWebRequest;
@@ -273,61 +269,63 @@ namespace ConsoleApplication
 
         static string SampleJson(string name)
         {
-            return "{" +
-                "\"__creatorId\": \"SQL Server\"," +
-                "\"name\": \"" + name + "\", " +
-                "\"dataSource\": { " +
-                    "\"sourceType\": \"SQL Server\", " +
-                    "\"objectType\": \"Table\"," +
-                    "\"formatType\": \"Structured\"" +
-                "}," +
-                "\"dsl\": {" +
-                    "\"protocol\": \"tds\"," +
-                    "\"authentication\": \"windows\"," +
-                    "\"address\": {" +
-                        "\"server\": \"MyServer.contoso.com\"," +
-                        "\"database\": \"Northwind\"," +
-                        "\"schema\": \"dbo\"," +
-                        "\"object\": \"" + name + "\", " +
-                    "}" +
-                "}," +
-                "\"modifiedTime\": \"2015-05-15T03:48:39.2425547Z\"," +
-                "\"lastRegisteredTime\": \"2015-05-15T03:48:39.2425547Z\"," +
-                "\"lastRegisteredBy\": {" +
-                    "\"upn\": \"user1@contoso.com\"," +
-                    "\"firstName\": \"User1FirstName\"," +
-                    "\"lastName\": \"User1LastName\"" +
-                "}," +
-                "\"schemas\": [" +
-                    "{" +
-                        "\"__creatorId\": \"SQL Server\"," +
-                        "\"modifiedTime\": \"2015-05-15T03:48:39.2425547Z\"," +
-                        "\"columns\": [" +
-                            "{" +
-                                "\"name\": \"OrderID\"," +
-                                "\"isNullable\": false," +
-                                "\"type\": \"int\"," +
-                                "\"maxLength\": 4," +
-                                "\"precision\": 10" +
-                            "}," +
-                            "{" +
-                                "\"name\": \"CustomerID\"," +
-                                "\"isNullable\": true," +
-                                "\"type\": \"nchar\"," +
-                                "\"maxLength\": 10," +
-                                "\"precision\": 0" +
-                            "}," +
-                            "{" +
-                                "\"name\": \"OrderDate\"," +
-                                "\"isNullable\": true," +
-                                "\"type\": \"datetime\"," +
-                                "\"maxLength\": 8," +
-                                "\"precision\": 23" +
-                            "}," +
-                        "]," +
-                    "}" +
-                "]" +
-            "}";
+            return string.Format(@"
+{{
+    ""properties"" : {{
+        ""fromSourceSystem"" : false,
+        ""name"": ""{0}"",
+        ""dataSource"": {{
+            ""sourceType"": ""SQL Server"",
+            ""objectType"": ""Table"",
+        }},
+        ""dsl"": {{
+            ""protocol"": ""tds"",
+            ""authentication"": ""windows"",
+            ""address"": {{
+                ""server"": ""MyServer.contoso.com"",
+                ""database"": ""Northwind"",
+                ""schema"": ""dbo"",
+                ""object"": ""{0}""
+            }}
+        }},
+        ""lastRegisteredBy"": {{
+            ""upn"": ""user1@contoso.com"",
+            ""firstName"": ""User1FirstName"",
+            ""lastName"": ""User1LastName""
+        }},
+    }},
+    ""annotations"" : {{
+        ""schema"": {{
+            ""properties"" : {{
+                ""fromSourceSystem"" : false,
+                ""columns"": [
+                    {{
+                        ""name"": ""OrderID"",
+                        ""isNullable"": false,
+                        ""type"": ""int"",
+                        ""maxLength"": 4,
+                        ""precision"": 10
+                    }},
+                    {{
+                        ""name"": ""CustomerID"",
+                        ""isNullable"": true,
+                        ""type"": ""nchar"",
+                        ""maxLength"": 10,
+                        ""precision"": 0
+                    }},
+                    {{
+                        ""name"": ""OrderDate"",
+                        ""isNullable"": true,
+                        ""type"": ""datetime"",
+                        ""maxLength"": 8,
+                        ""precision"": 23
+                    }},
+                ],
+            }}
+        }}
+    }}
+}}
+", name);
         }
     }
 }
