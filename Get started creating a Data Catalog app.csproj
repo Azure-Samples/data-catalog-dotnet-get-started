@@ -41,6 +41,10 @@
       <HintPath>packages\Microsoft.IdentityModel.Clients.ActiveDirectory.2.19.208020213\lib\net45\Microsoft.IdentityModel.Clients.ActiveDirectory.WindowsForms.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json.dll">
+      <HintPath>packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>

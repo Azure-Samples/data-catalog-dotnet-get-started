@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using System.Net;
 using System.IO;
+using Newtonsoft.Json.Linq;
 
 namespace ConsoleApplication
 {
@@ -19,14 +20,19 @@ namespace ConsoleApplication
 
         static void Main(string[] args)
         {
-            RegisterDataAsset(catalogName, SampleJson("OrdersSample"));
+            var id = RegisterDataAsset(SampleJson("OrdersSample"));
             Console.WriteLine("Registered data asset. Press Enter to continue");
+            Console.ReadLine();
+
+            // Get an asset
+            var item = GetDataAsset(id);
+            Console.WriteLine("Read data asset. Press Enter to continue");
             Console.ReadLine();
 
             //Search a name
             string searchTerm = "name:=OrdersSample";
 
-            string searchJson = SearchDataAsset(catalogName, searchTerm);
+            string searchJson = SearchDataAsset(searchTerm);
 
             //Save to search JSON so that you can examine the JSON
             //  The json is saved in the \bin\debug folder of the sample app path
@@ -39,15 +45,9 @@ namespace ConsoleApplication
             Console.WriteLine("Searched data asset. Press Enter to continue");
             Console.ReadLine();
 
-            Console.WriteLine("Register sample data asset to Delete. Press Enter to continue");
-
-            //Register a sample data asset to delete
-            string dataAssetUrl = RegisterDataAsset(catalogName, SampleJson("DeleteSample"));
-            Console.ReadLine();
-
             Console.WriteLine("Delete data asset. Press Enter to continue");
 
-            DeleteDataAsset(dataAssetUrl);
+            DeleteDataAsset(id, item["etag"].ToString());
 
             Console.ReadLine();
         }
@@ -87,7 +87,7 @@ namespace ConsoleApplication
         //Register data asset:
         // The Register Data Asset operation registers a new data asset 
         // or updates an existing one if an asset with the same identity already exists. 
-        static string RegisterDataAsset(string catalogName, string json)
+        static string RegisterDataAsset(string json)
         {
             string dataAssetHeader = string.Empty;
 
@@ -129,9 +129,54 @@ namespace ConsoleApplication
             return dataAssetHeader;
         }
 
+        //Get data asset:
+        // The Get Data Asset operation retrieves data asset by Id
+        static JObject GetDataAsset(string assetUrl)
+        {
+            string fullUri = string.Format("{0}?api-version=2016-03-30", assetUrl);
+
+            //Create a GET WebRequest as a Json content type
+            HttpWebRequest request = WebRequest.Create(fullUri) as HttpWebRequest;
+            request.KeepAlive = true;
+            request.Method = "GET";
+            request.Accept = "application/json;adc.metadata=full";
+
+            try
+            {
+                var response = SetRequestAndGetResponse(request);
+                using (var reader = new StreamReader(response.GetResponseStream()))
+                {
+                    var itemPayload = reader.ReadToEnd();
+                    Console.WriteLine(itemPayload);
+                    return JObject.Parse(itemPayload);
+                }
+            }
+            catch (WebException ex)
+            {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.Status);
+                if (ex.Response != null)
+                {
+                    // can use ex.Response.Status, .StatusDescription
+                    if (ex.Response.ContentLength != 0)
+                    {
+                        using (var stream = ex.Response.GetResponseStream())
+                        {
+                            using (var reader = new StreamReader(stream))
+                            {
+                                Console.WriteLine(reader.ReadToEnd());
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
         //Search data asset:
         //The Search Data Asset operation searches over data assets based on the search terms provided.
-        static string SearchDataAsset(string catalogName, string searchTerm)
+        static string SearchDataAsset(string searchTerm)
         {
             string responseContent = string.Empty;
 
@@ -181,7 +226,7 @@ namespace ConsoleApplication
 
         //Delete data asset:
         // The Delete Data Asset operation deletes a data asset and all annotations (if any) attached to it. 
-        static string DeleteDataAsset(string dataAssetUrl)
+        static string DeleteDataAsset(string dataAssetUrl, string etag = null)
         {
             string responseStatusCode = string.Empty;
 
@@ -193,6 +238,10 @@ namespace ConsoleApplication
             request.KeepAlive = true;
             request.Method = "DELETE";
 
+            if (etag != null)
+            {
+                request.Headers.Add("If-Match", string.Format(@"W/""{0}""", etag));
+            }
 
             try
             {
