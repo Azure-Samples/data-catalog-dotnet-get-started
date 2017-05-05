@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using System.Net;
 using System.IO;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace ConsoleApplication
@@ -47,7 +48,7 @@ namespace ConsoleApplication
 
             Console.WriteLine("Delete data asset. Press Enter to continue");
 
-            DeleteDataAsset(id, item["etag"].ToString());
+            DeleteDataAsset(id);
 
             Console.ReadLine();
         }
@@ -57,7 +58,7 @@ namespace ConsoleApplication
         // AuthenticationContext is part of the Active Directory Authentication Library NuGet package
         // To install the Active Directory Authentication Library NuGet package in Visual Studio, 
         //  run "Install-Package Microsoft.IdentityModel.Clients.ActiveDirectory" from the NuGet Package Manager Console.
-        static AuthenticationResult AccessToken()
+        static async Task<AuthenticationResult> AccessToken()
         {
             if (authResult == null)
             {
@@ -78,7 +79,7 @@ namespace ConsoleApplication
 
                 // Call AcquireToken to get an Azure token from Azure Active Directory token issuance endpoint
                 //  AcquireToken takes a Client Id that Azure AD creates when you register your client app.
-                authResult = authContext.AcquireToken(resourceUri, clientId, new Uri(redirectUri), PromptBehavior.RefreshSession);
+                authResult = await authContext.AcquireTokenAsync(resourceUri, clientId, new Uri(redirectUri), new PlatformParameters(PromptBehavior.Always));
             }
 
             return authResult;
@@ -97,7 +98,7 @@ namespace ConsoleApplication
             HttpWebRequest request = System.Net.WebRequest.Create(fullUri) as System.Net.HttpWebRequest;
             request.KeepAlive = true;
             request.Method = "POST";
-
+          
             try
             {
                 var response = SetRequestAndGetResponse(request, json);
@@ -280,7 +281,7 @@ namespace ConsoleApplication
             while (true)
             {
                 //To authorize the operation call, you need an access token which is part of the Authorization header
-                request.Headers.Add("Authorization", AccessToken().CreateAuthorizationHeader());
+                request.Headers.Add("Authorization", AccessToken().Result.CreateAuthorizationHeader());
                 //Set to false to be able to intercept redirects
                 request.AllowAutoRedirect = false;
 
@@ -331,7 +332,7 @@ namespace ConsoleApplication
             ""protocol"": ""tds"",
             ""authentication"": ""windows"",
             ""address"": {{
-                ""server"": ""MyServer.contoso.com"",
+                ""server"": ""test.contoso.com"",
                 ""database"": ""Northwind"",
                 ""schema"": ""dbo"",
                 ""object"": ""{0}""
