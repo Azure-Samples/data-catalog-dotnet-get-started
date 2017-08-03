@@ -2,7 +2,7 @@
 
 using System;
 using System.Text;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using Microsoft.IdentityModel.Clients.ActiveDirectory; //Install-Package Microsoft.IdentityModel.Clients.ActiveDirectory
 using System.Net;
 using System.IO;
 using System.Threading.Tasks;
@@ -372,7 +372,59 @@ namespace ConsoleApplication
                     }},
                 ],
             }}
-        }}
+        }},
+        ""previews"": [
+          {{
+                ""properties"": {{
+                    ""preview"": [
+                      {{
+                        ""OrderId"": 1,
+                        ""CustomerID"": 11,
+                        ""OrderDate"": null
+                      }},
+                      {{
+                        ""OrderId"": 2,
+                        ""CustomerID"": 12,
+                        ""OrderDate"": ""08/02/2017""
+                      }}
+                    ],
+                    ""key"": ""SqlExtractor"",
+                    ""fromSourceSystem"": true
+                }}
+          }}
+        ],
+        ""tableDataProfiles"": [
+          {{
+            ""properties"": {{
+              ""dataModifiedTime"": ""2015 -12-31T00:32:22.4832805-08:00"",
+              ""schemaModifiedTime"": ""2015 -12-31T00:32:22.4832805-08:00"",
+              ""size"": 9223372036854775807,
+              ""numberOfRows"": 9223372036854775807,
+              ""key"": ""Test"",
+              ""fromSourceSystem"": true
+            }}
+          }}
+        ],
+        ""columnsDataProfiles"": [
+          {{
+            ""properties"": {{
+              ""columns"": [
+                {{
+                  ""columnName"": ""OrderId"",
+                  ""type"": ""int"",
+                  ""min"": ""1"",
+                  ""max"": ""1002"",
+                  ""stdev"": 50,
+                  ""avg"": 201,
+                  ""nullCount"": 0,
+                  ""distinctCount"": 12121212
+                }}
+              ],
+              ""key"": ""Test"",
+              ""fromSourceSystem"": true
+            }}
+          }}
+        ],
     }}
 }}
 ", name);
