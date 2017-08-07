@@ -21,7 +21,8 @@ namespace ConsoleApplication
 
         static void Main(string[] args)
         {
-            var id = RegisterDataAsset(SampleJson("OrdersSample"));
+            string upn = AccessToken().Result.UserInfo.DisplayableId;
+            var id = RegisterDataAsset(SampleJson("OrdersSample", upn));
             Console.WriteLine("Registered data asset. Press Enter to continue");
             Console.ReadLine();
 
@@ -317,7 +318,7 @@ namespace ConsoleApplication
             }
         }
 
-        static string SampleJson(string name)
+        static string SampleJson(string name, string upn)
         {
             return string.Format(@"
 {{
@@ -339,9 +340,7 @@ namespace ConsoleApplication
             }}
         }},
         ""lastRegisteredBy"": {{
-            ""upn"": ""user1@contoso.com"",
-            ""firstName"": ""User1FirstName"",
-            ""lastName"": ""User1LastName""
+            ""upn"": ""{1}""
         }},
     }},
     ""annotations"" : {{
@@ -427,7 +426,7 @@ namespace ConsoleApplication
         ],
     }}
 }}
-", name);
+", name, upn);
         }
     }
 }
